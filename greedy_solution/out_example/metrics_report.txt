@@ -1,0 +1,50 @@
+Quality Metrics Report
+========================================
+
+Zone: CENTER:
+  mse                 :   0.0341
+  rmse                :   0.1846
+  mae                 :   0.1671
+  psnr                :  15.6030
+  pearson             :   0.5573
+  gradient_error      :   0.0319
+  max_error           :   0.5989
+  median_error        :   0.1622
+  target_mean         :   0.3739
+  recon_mean          :   0.2095
+  target_std          :   0.0941
+  recon_std           :   0.0834
+  pixel_count         : 17161
+  ssim                :   0.9967
+
+Zone: RING:
+  mse                 :   0.0269
+  rmse                :   0.1639
+  mae                 :   0.1149
+  psnr                :  15.6030
+  pearson             :   0.9114
+  gradient_error      :   0.0319
+  max_error           :   1.0000
+  median_error        :   0.0978
+  target_mean         :   0.3429
+  recon_mean          :   0.2605
+  target_std          :   0.3274
+  recon_std           :   0.2544
+  pixel_count         : 173808
+  ssim                :   0.9967
+
+Zone: FULL:
+  mse                 :   0.0275
+  rmse                :   0.1659
+  mae                 :   0.1196
+  psnr                :  15.6030
+  pearson             :   0.9044
+  gradient_error      :   0.0319
+  max_error           :   1.0000
+  median_error        :   0.1078
+  target_mean         :   0.3457
+  recon_mean          :   0.2559
+  target_std          :   0.3138
+  recon_std           :   0.2444
+  pixel_count         : 190969
+  ssim                :   0.9967

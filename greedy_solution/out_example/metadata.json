@@ -1,0 +1,20 @@
+{
+  "image_size": 437,
+  "angle_count": 180,
+  "threads_per_angle": 40,
+  "full_catalog": false,
+  "nail_count": 300,
+  "min_nail_gap": 10,
+  "max_lines": 8000,
+  "thread_count": 8000,
+  "darkness": 0.02,
+  "min_score": 0.0001,
+  "reconstruction_rmse": 0.1911562866155648,
+  "reconstruction_mae": 0.1538633083197868,
+  "zone_center_rmse": 0.18462766846599524,
+  "zone_ring_rmse": 0.16393697957686318,
+  "zone_center_ssim": 0.9967102523696242,
+  "zone_ring_ssim": 0.9967102523696242,
+  "zone_full_ssim": 0.9967102523696242,
+  "algorithm": "greedy_residual"
+}
