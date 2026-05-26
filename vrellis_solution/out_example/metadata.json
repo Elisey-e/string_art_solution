@@ -1,0 +1,10 @@
+{
+  "image_size": 437,
+  "nail_count": 240,
+  "thread_count": 5000,
+  "line_weight": 0.08,
+  "min_nail_gap": 12,
+  "residual_rmse": 0.02131249731752545,
+  "algorithm": "vrellis_greedy",
+  "reference": "https://github.com/grvlbit/stringart (Petros Vrellis)"
+}

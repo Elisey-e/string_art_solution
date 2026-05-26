@@ -1,9 +1,0 @@
-{
-  "image_size": 437,
-  "angle_count": 90,
-  "threads_per_angle": 20,
-  "thread_count": 592,
-  "algorithm": "fbp_radon",
-  "rmse": 0.5087296459398432,
-  "mae": 0.41164995363804413
-}

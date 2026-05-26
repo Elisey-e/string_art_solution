@@ -151,6 +151,21 @@ def filter_sinogram(sinogram):
     return filtered
 
 
+def prepare_fbp_image(image, brightness_lift=0.2, background_threshold=0.88):
+    """
+    Подготовка для FBP (task.md):
+    - поднять яркость исходника (для ramp-фильтра);
+    - инвертировать: тёмные детали портрета -> больше нитей в синограмме;
+    - обнулить белый фон.
+    """
+    size = image.shape[0]
+    mask = circle_mask(size)
+    lifted = np.clip(image + brightness_lift, 0.0, 1.0)
+    target = (1.0 - lifted) * mask
+    target[lifted > background_threshold] = 0.0
+    return target
+
+
 def keep_brightest_per_angle(sinogram, thread_count):
     kept = np.zeros_like(sinogram)
     thread_count = min(thread_count, sinogram.shape[1])
@@ -162,13 +177,21 @@ def keep_brightest_per_angle(sinogram, thread_count):
     return kept
 
 
-def normalize_nonnegative(sinogram):
+def normalize_sinogram_probabilities(sinogram, gamma=0.85):
+    """Нормировка по каждому углу в [0, 1] для осмысленного random dither."""
     normalized = sinogram.copy()
     normalized[normalized < 0] = 0
 
-    maximum = normalized.max()
-    if maximum > 0:
-        normalized /= maximum
+    for angle_index, projection in enumerate(normalized):
+        row = projection.copy()
+        row[row < 0] = 0.0
+        maximum = row.max()
+
+        if maximum <= 0:
+            continue
+
+        row = (row / maximum) ** gamma
+        normalized[angle_index] = row
 
     return normalized
 
@@ -178,16 +201,21 @@ def binary_dither(probabilities, seed):
     return (random < probabilities).astype(np.uint8)
 
 
-def binary_sinogram_to_lines(binary_sinogram, angles):
+def binary_sinogram_to_lines(binary_sinogram, angles, probabilities=None):
     center = (binary_sinogram.shape[1] - 1) / 2
     lines = []
+    weights = []
 
     for angle_index, offset_index in np.argwhere(binary_sinogram > 0):
         angle = float(angles[angle_index])
         offset = float(offset_index - center)
         lines.append((angle, offset))
+        if probabilities is not None:
+            weights.append(float(probabilities[angle_index, offset_index]))
+        else:
+            weights.append(1.0)
 
-    return lines
+    return lines, weights
 
 
 def save_schema(lines, path):
@@ -275,7 +303,7 @@ def iter_thread_segments(lines, size, nail_count=0, render_size=None):
             yield segment
 
 
-def draw_threads(lines, size, render_size=None):
+def draw_threads(lines, size, render_size=None, weights=None):
     render_size, scale = _render_scale(size, render_size)
     canvas = np.zeros((render_size, render_size), dtype=float)
     center = (size - 1) / 2
@@ -283,7 +311,10 @@ def draw_threads(lines, size, render_size=None):
     center_r = (render_size - 1) / 2
     sample_count = max(int(size * 2 * scale), size * 2)
 
-    for entry in lines:
+    if weights is None:
+        weights = [1.0] * len(lines)
+
+    for entry, weight in zip(lines, weights):
         angle = float(entry[0])
         offset = float(entry[1])
         if abs(offset) > radius:
@@ -307,7 +338,7 @@ def draw_threads(lines, size, render_size=None):
             & (cols < render_size)
         )
 
-        np.add.at(canvas, (rows[valid], cols[valid]), 1.0)
+        np.add.at(canvas, (rows[valid], cols[valid]), weight)
 
     mask = circle_mask(render_size)
     canvas *= mask
@@ -382,10 +413,26 @@ def _raster_preview_from_canvas(canvas):
     return image
 
 
-def save_threads_image_black_background(lines, size, path, preview_scale=3):
+def save_threads_image_black_background(
+    lines,
+    size,
+    path,
+    preview_scale=3,
+    weights=None,
+):
+    """
+    PNG-превью: белые нити на чёрном, но тональность как у исходника
+    (много нитей в тёмных зонах -> тёмнее на превью, не «негатив»).
+    """
     render_size = int(round(size * preview_scale))
-    canvas = draw_threads(lines, size, render_size=render_size)
+    canvas = draw_threads(
+        lines,
+        size,
+        render_size=render_size,
+        weights=weights,
+    )
     image = _raster_preview_from_canvas(canvas)
+    image = 1.0 - image
     Image.fromarray((image * 255).astype(np.uint8)).save(path)
 
 
@@ -397,6 +444,7 @@ def save_preview_bundle(
     preview_scale=3,
     png_name="preview.png",
     svg_name="preview.svg",
+    weights=None,
 ):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -407,6 +455,7 @@ def save_preview_bundle(
         size,
         output_dir / png_name,
         preview_scale=preview_scale,
+        weights=weights,
     )
     save_threads_svg(
         lines,

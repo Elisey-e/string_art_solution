@@ -7,15 +7,16 @@ from string_art import (
     binary_dither,
     binary_sinogram_to_lines,
     circle_mask,
+    draw_threads,
     filter_sinogram,
     keep_brightest_per_angle,
     load_grayscale_square,
-    normalize_nonnegative,
+    prepare_fbp_image,
+    normalize_sinogram_probabilities,
     radon_transform,
     save_float_image,
-    save_schema,
-    save_threads_image,
     save_preview_bundle,
+    save_schema,
     sinogram_error_diffusion,
 )
 
@@ -31,12 +32,24 @@ def simple_reconstruction_metrics(target, reconstruction):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Построение схемы ниткографии методом FBP."
+        description="Построение схемы ниткографии методом FBP (task.md)."
     )
     parser.add_argument("image", help="квадратное изображение в режиме L")
-    parser.add_argument("--angles", type=int, default=180, help="число углов")
-    parser.add_argument("--threads", type=int, default=20, help="максимум нитей на один угол")
+    parser.add_argument("--angles", type=int, default=360, help="число углов")
+    parser.add_argument("--threads", type=int, default=40, help="максимум нитей на один угол")
     parser.add_argument("--seed", type=int, default=1, help="зерно случайного распыления")
+    parser.add_argument(
+        "--brightness-lift",
+        type=float,
+        default=0.2,
+        help="подъём яркости исходника перед Radon (см. task.md)",
+    )
+    parser.add_argument(
+        "--prob-gamma",
+        type=float,
+        default=0.85,
+        help="гамма вероятностей sinogram перед dither",
+    )
     parser.add_argument(
         "--dither-mode",
         choices=["random", "error-diffusion"],
@@ -56,58 +69,57 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     image = load_grayscale_square(args.image)
-    image = (1.0 - image) * circle_mask(image.shape[0])
+    target = prepare_fbp_image(image, brightness_lift=args.brightness_lift)
 
-    sinogram, angles = radon_transform(image, args.angles)
+    sinogram, angles = radon_transform(target, args.angles)
     filtered = filter_sinogram(sinogram)
     burned = keep_brightest_per_angle(filtered, args.threads)
-    probabilities = normalize_nonnegative(burned)
+    probabilities = normalize_sinogram_probabilities(burned, gamma=args.prob_gamma)
 
     if args.dither_mode == "error-diffusion":
         binary = sinogram_error_diffusion(probabilities, args.seed)
     else:
         binary = binary_dither(probabilities, args.seed)
 
-    lines = binary_sinogram_to_lines(binary, angles)
+    lines, weights = binary_sinogram_to_lines(binary, angles, probabilities)
 
     save_float_image(sinogram, output_dir / "01_sinogram.png")
     save_float_image(filtered, output_dir / "02_filtered.png")
     save_float_image(probabilities, output_dir / "03_probabilities.png")
     save_float_image(binary, output_dir / "04_binary_sinogram.png")
     save_schema(lines, output_dir / "schema.csv")
-    save_preview_bundle(lines, image.shape[0], output_dir, preview_scale=3)
+    save_preview_bundle(
+        lines,
+        image.shape[0],
+        output_dir,
+        preview_scale=3,
+        weights=weights,
+    )
 
-    recon_canvas = None
-    try:
-        from string_art import draw_threads
+    recon_canvas = np.clip(draw_threads(lines, image.shape[0], weights=weights), 0.0, 1.0)
+    rm = simple_reconstruction_metrics(target, recon_canvas)
 
-        recon_canvas = draw_threads(lines, image.shape[0])
-        recon_canvas = np.clip(recon_canvas, 0.0, 1.0)
-    except Exception:
-        pass
-
-    metrics = {
+    metadata = {
         "image_size": int(image.shape[0]),
         "angle_count": args.angles,
         "threads_per_angle": args.threads,
         "thread_count": len(lines),
+        "brightness_lift": args.brightness_lift,
+        "prob_gamma": args.prob_gamma,
+        "dither_mode": args.dither_mode,
         "algorithm": "fbp_radon",
+        "rmse": rm["rmse"],
+        "mae": rm["mae"],
     }
-
-    if recon_canvas is not None:
-        rm = simple_reconstruction_metrics(image, recon_canvas)
-        metrics["rmse"] = rm["rmse"]
-        metrics["mae"] = rm["mae"]
-
     (output_dir / "metadata.json").write_text(
-        json.dumps(metrics, indent=2), encoding="utf-8"
+        json.dumps(metadata, indent=2), encoding="utf-8"
     )
 
+    hr = int(image.shape[0] * 3)
     print(f"Готово: {output_dir / 'schema.csv'}")
     print(f"Нитей: {len(lines)}")
-    if "rmse" in metrics:
-        print(f"RMSE: {metrics['rmse']:.4f}, MAE: {metrics['mae']:.4f}")
-    print(f"PNG: {output_dir / 'preview.png'} ({image.shape[0] * 3}×{image.shape[0] * 3})")
+    print(f"RMSE: {rm['rmse']:.4f}, MAE: {rm['mae']:.4f}")
+    print(f"PNG: {output_dir / 'preview.png'} ({hr}×{hr})")
     print(f"SVG: {output_dir / 'preview.svg'}")
 
 

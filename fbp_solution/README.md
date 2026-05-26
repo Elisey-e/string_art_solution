@@ -15,14 +15,15 @@
 ## Исправления
 
 ✅ Инверсия изображения **ДО** Radon (тёмное лицо = больше нитей)
-✅ Визуализация на чёрном фоне (белые нити)
+✅ `preview.png` — тональность как у фото (инверсия только при отрисовке растра)
+✅ `preview.svg` — физическая модель: белые нити на чёрном фоне (как в task.md)
 ✅ Добавлен режим error-diffusion вместо random dither
 
 ## Запуск
 
 ```bash
-# Базовый запуск
-python3 build_schema.py input.png --angles 90 --threads 20 --seed 1 --out out
+# Рекомендуемый запуск (по умолчанию в run.sh)
+python3 build_schema.py input.png --angles 360 --threads 40 --seed 1 --brightness-lift 0.35 --out out
 
 # Error diffusion вместо random dither
 python3 build_schema.py input.png --angles 180 --threads 20 --seed 1 --dither-mode error-diffusion --out out
@@ -57,8 +58,8 @@ python3 build_schema.py input.png --angles 180 --threads 20 --seed 1 --dither-mo
 ## Выходные файлы
 
 - `schema.csv` — схема нитей (angle_deg, rho_px)
-- `preview.png` — растровое превью (×3 от размера схемы, напр. 437→1311 px)
-- `preview.svg` — векторное превью (бесконечный зум, чёрный фон, белые нити)
+- `preview.png` — растровое превью (×3, тёмные детали = темнее, без «негатива»)
+- `preview.svg` — вектор: белые нити на чёрном (реальная картина из ниток)
 - `01_sinogram.png` — преобразование Радона
 - `02_filtered.png` — после рамп-фильтра
 - `03_probabilities.png` — после нормировки

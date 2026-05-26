@@ -1,0 +1,12 @@
+{
+  "image_size": 437,
+  "angle_count": 360,
+  "threads_per_angle": 40,
+  "thread_count": 8418,
+  "brightness_lift": 0.2,
+  "prob_gamma": 0.85,
+  "dither_mode": "random",
+  "algorithm": "fbp_radon",
+  "rmse": 0.8429189554019942,
+  "mae": 0.8026126461414447
+}
