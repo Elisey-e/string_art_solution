@@ -5,25 +5,7 @@ import numpy as np
 from PIL import Image
 
 
-def serpentine_dither_1d(projection, seed=None):
-    """Serpentine dithering for 1D signal (e.g., sinogram row)."""
-    rng = np.random.default_rng(seed)
-    output = np.zeros_like(projection, dtype=np.uint8)
-
-    forward = True
-    for i in range(len(projection)):
-        idx = i if forward else len(projection) - 1 - i
-        value = projection[idx]
-
-        random = rng.random()
-        if random < value:
-            output[idx] = 1
-
-        forward = not forward
-
-    return output
-
-
+# В отличие от рандомного дизеринга, тут ошибка учитывается в следующих шагах
 def sinogram_error_diffusion(sinogram, seed=None):
     """
     Apply simple error diffusion to sinogram.
@@ -61,6 +43,7 @@ def sinogram_error_diffusion(sinogram, seed=None):
     return output
 
 
+# Загрузка изображения
 def load_grayscale_square(path):
     image = Image.open(path)
 
@@ -73,12 +56,14 @@ def load_grayscale_square(path):
     return np.asarray(image, dtype=float) / 255.0
 
 
+# Маска для окружности обрезки
 def circle_mask(size):
     center = (size - 1) / 2
     y, x = np.ogrid[:size, :size]
     return (x - center) ** 2 + (y - center) ** 2 <= center ** 2
 
 
+# Билинейная интерполяция для радона, нужно чтобы учесть соседей для наклонных прямых
 def bilinear_sample(image, rows, cols):
     size = image.shape[0]
 
@@ -105,6 +90,7 @@ def bilinear_sample(image, rows, cols):
     return values
 
 
+# Радон.
 def radon_transform(image, angle_count):
     size = image.shape[0]
     center = (size - 1) / 2
