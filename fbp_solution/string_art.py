@@ -140,7 +140,7 @@ def filter_sinogram(sinogram):
 def prepare_fbp_image(image, brightness_lift=0.2, background_threshold=0.88):
     """
     Подготовка для FBP (task.md):
-    - поднять яркость исходника (для ramp-фильтра);
+    - поднять яркость исходника
     - инвертировать: тёмные детали портрета -> больше нитей в синограмме;
     - обнулить белый фон.
     """
@@ -149,7 +149,7 @@ def prepare_fbp_image(image, brightness_lift=0.2, background_threshold=0.88):
     lifted = np.clip(image + brightness_lift, 0.0, 1.0)
     target = (1.0 - lifted) * mask
     target[lifted > background_threshold] = 0.0
-    return target
+    return image
 
 
 def keep_brightest_per_angle(sinogram, thread_count):
